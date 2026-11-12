@@ -1,0 +1,122 @@
+// =====================================================================
+// TRCM QA Automation - Jenkins Declarative Pipeline
+//
+// How Jenkins finds this file:
+//   New Item > Pipeline > "Pipeline script from SCM" > Script Path = ci/jenkins/Jenkinsfile
+//
+// Plugins needed: Pipeline, Git, JUnit, HTML Publisher, Credentials Binding, Timestamper
+// Global tools (Manage Jenkins > Tools): a Maven named "Maven3" and a JDK named "JDK17"
+// =====================================================================
+
+pipeline {
+    agent any   // run on any available agent; use agent { label 'linux-chrome' } to pin one
+
+    tools {
+        maven 'Maven3'
+        jdk 'JDK17'
+    }
+
+    // "Build with Parameters" screen. The FIRST choice is the default,
+    // which is also what the nightly cron trigger uses.
+    parameters {
+        choice(name: 'ENV', choices: ['local', 'dev', 'cert'],
+               description: 'local = built-in mock app (works out of the box). dev/cert = fake URLs for learning.')
+        choice(name: 'SUITE', choices: ['regression', 'smoke', 'api'],
+               description: 'Which TestNG suite XML to run')
+        choice(name: 'BROWSER', choices: ['chrome', 'firefox', 'edge'],
+               description: 'Browser for UI tests')
+    }
+
+    triggers {
+        cron('H 2 * * 1-5')         // nightly regression, Mon-Fri around 02:00 (agent time)
+        pollSCM('H/15 * * * *')     // check Git every ~15 min; a webhook is better in real projects
+    }
+
+    options {
+        timestamps()
+        timeout(time: 60, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()   // the mock server uses a fixed port
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                runCmd('mvn -B clean test-compile')
+            }
+        }
+
+        stage('Run tests') {
+            steps {
+                script {
+                    String cmd = "mvn -B test" +
+                            " -Denv=${params.ENV}" +
+                            " -Dsuite=src/test/resources/suites/${params.SUITE}.xml" +
+                            " -Dbrowser=${params.BROWSER}" +
+                            " -Dheadless=true"
+
+                    if (params.ENV == 'local') {
+                        runCmd(cmd)   // mock uses fake built-in keys, no secrets needed
+                    } else {
+                        // Secrets live in Jenkins > Manage Credentials (kind: "Secret text").
+                        // They arrive as environment variables, which ConfigReader picks up automatically,
+                        // and Jenkins masks them as **** in the console log.
+                        withCredentials([
+                                string(credentialsId: 'trcm-apim-subscription-key', variable: 'APIM_SUBSCRIPTION_KEY'),
+                                string(credentialsId: 'trcm-service-api-key', variable: 'SERVICE_API_KEY')
+                        ]) {
+                            runCmd(cmd)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // 1. Test results tab + trend graph (surefire writes JUnit-format XML for TestNG runs)
+            junit allowEmptyResults: true, testResults: 'target/surefire-reports/TEST-*.xml'
+
+            // 2. Extent HTML report as a link on the build page.
+            //    Note: Jenkins' default Content Security Policy blocks the report's CSS/JS.
+            //    See ci/jenkins/README.md for the one-line fix.
+            publishHTML(target: [
+                    reportDir            : 'target/reports',
+                    reportFiles          : 'ExtentReport.html',
+                    reportName           : 'Extent Report',
+                    keepAll              : true,
+                    alwaysLinkToLastBuild: true,
+                    allowMissing         : true
+            ])
+
+            // 3. Raw files for debugging: logs, failure screenshots, report
+            archiveArtifacts artifacts: 'target/logs/**, target/screenshots/**, target/reports/**',
+                    allowEmptyArchive: true
+        }
+        success {
+            echo "All ${params.SUITE} tests passed on ${params.ENV}."
+        }
+        failure {
+            echo 'Tests failed. Open the Extent Report and the failure screenshots in the build artifacts.'
+            // Real projects usually notify the team here, for example with the Email Extension plugin:
+            // emailext subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            //          body: "See ${env.BUILD_URL}", to: 'qa-team@example.com'
+        }
+    }
+}
+
+// Runs a shell command on Linux/macOS agents and a batch command on Windows agents.
+def runCmd(String cmd) {
+    if (isUnix()) {
+        sh cmd
+    } else {
+        bat cmd
+    }
+}

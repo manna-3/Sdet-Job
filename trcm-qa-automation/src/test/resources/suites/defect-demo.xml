@@ -1,0 +1,17 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  DEMO suite: one test that FAILS ON PURPOSE so you can see a failure in the Extent report
+  (stack trace + embedded screenshot). Try it with retries too:
+  mvn clean test -Dsuite=src/test/resources/suites/defect-demo.xml -Dretry.count=1
+-->
+<suite name="TRCM Defect Demo" verbose="1">
+    <listeners>
+        <listener class-name="com.trcm.qa.listeners.TestListener"/>
+        <listener class-name="com.trcm.qa.listeners.RetryTransformer"/>
+    </listeners>
+    <test name="Defect Demo">
+        <classes>
+            <class name="com.trcm.qa.tests.demo.DefectDemoTest"/>
+        </classes>
+    </test>
+</suite>

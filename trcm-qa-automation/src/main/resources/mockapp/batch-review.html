@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRCM Batch Review (Mock)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<!--
+  MOCK APPLICATION FOR LEARNING ONLY.
+  This page imitates the TRCM "Batch Review & EDI Upload" screen so the Selenium
+  tests in this project have something real to click. All logic runs in app.js.
+  Element ids are stable on purpose: they are the locators the Page Objects use.
+-->
+<body data-review-count="0" data-env="local-mock">
+  <header class="topbar">
+    <div class="brand">TRCM <span class="brand-sub">Batch Review</span></div>
+    <div class="env-badge" id="envBadge">Mock environment</div>
+  </header>
+
+  <main class="layout">
+    <section class="workspace">
+      <div class="panel upload-panel">
+        <h1>Review a claim batch</h1>
+        <p class="hint">Upload an 837 EDI file with up to 50 claims, then run the review.</p>
+        <div class="upload-row">
+          <input type="file" id="fileInput" aria-label="Choose EDI file">
+          <button id="uploadBtn" class="btn">Upload</button>
+          <button id="runReviewBtn" class="btn btn-primary" disabled>Run review</button>
+          <span id="spinner" class="spinner" hidden aria-label="Review in progress"></span>
+        </div>
+        <p id="uploadMessage" class="message" role="status"></p>
+      </div>
+
+      <div class="panel stats" id="statsBar">
+        <div><span class="stat-num" id="statsTotal">0</span><span class="stat-label">Claims</span></div>
+        <div><span class="stat-num ok" id="statsAccepted">0</span><span class="stat-label">Accepted</span></div>
+        <div><span class="stat-num bad" id="statsRejected">0</span><span class="stat-label">Rejected</span></div>
+        <div class="stats-actions">
+          <button id="exportBtn" class="btn" disabled>Export CSV</button>
+          <button id="clearBtn" class="btn btn-ghost">Clear</button>
+        </div>
+      </div>
+
+      <div class="panel grid-panel">
+        <div class="table-wrap">
+          <table id="claimsTable">
+            <thead>
+              <tr>
+                <th>Claim ID</th><th>Patient</th><th>DOB</th><th>Member ID</th>
+                <th>Provider NPI</th><th>Provider</th><th>Payer ID</th><th>Payer</th>
+                <th>ICD-10</th><th>CPT</th><th>Units</th><th>Charge</th>
+                <th>Denial score</th><th>Status</th><th>Reason</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="claimsBody">
+              <tr id="emptyRow"><td colspan="16" class="empty">No results yet. Upload a file and run a review.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <aside class="chat panel" id="chatPanel">
+      <div class="chat-head">
+        <h2 id="chatHeader">Bulk chat</h2>
+        <button id="batchBtn" class="btn btn-small" hidden>Batch</button>
+      </div>
+      <div id="sampleQuestions" class="samples"></div>
+      <div id="chatMessages" class="messages" aria-live="polite"></div>
+      <div id="typingIndicator" class="typing" hidden>Assistant is typing…</div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Ask about this batch" aria-label="Chat message">
+        <button id="chatSendBtn" class="btn btn-primary">Send</button>
+      </div>
+    </aside>
+  </main>
+
+  <div id="detailModal" class="modal" hidden role="dialog" aria-labelledby="detailTitle">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="detailTitle">Claim detail</h2>
+        <button id="closeDetailBtn" class="btn btn-ghost" aria-label="Close">✕</button>
+      </div>
+      <dl id="detailFields" class="detail-grid"></dl>
+      <button id="toggleJsonBtn" class="btn btn-small">View raw JSON</button>
+      <pre id="rawJson" hidden></pre>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

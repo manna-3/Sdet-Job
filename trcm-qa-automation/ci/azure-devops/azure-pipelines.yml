@@ -1,0 +1,151 @@
+# =====================================================================
+# TRCM QA Automation - Azure DevOps YAML Pipeline
+#
+# How Azure DevOps finds this file:
+#   Pipelines > New pipeline > (your repo) > Existing Azure Pipelines YAML file
+#   > path: /ci/azure-devops/azure-pipelines.yml
+# =====================================================================
+
+# CI trigger: run on every push to main
+trigger:
+  branches:
+    include:
+      - main
+
+# PR trigger: run when a pull request targets main (acts as a quality gate before merge)
+pr:
+  branches:
+    include:
+      - main
+
+# Nightly regression. Cron times are UTC: 20:30 UTC = 02:00 IST.
+schedules:
+  - cron: "30 20 * * 1-5"
+    displayName: Nightly regression (Mon-Fri)
+    branches:
+      include:
+        - main
+    always: true   # run even if there were no code changes
+
+# Shown when you click "Run pipeline". Scheduled and triggered runs use the defaults.
+parameters:
+  - name: environment
+    displayName: Environment
+    type: string
+    default: local
+    values: [local, dev, cert]
+  - name: suite
+    displayName: TestNG suite
+    type: string
+    default: regression
+    values: [smoke, regression, api]
+  - name: browser
+    displayName: Browser
+    type: string
+    default: chrome
+    values: [chrome, firefox, edge]
+
+pool:
+  vmImage: ubuntu-latest   # Microsoft-hosted agent: Java 17, Maven, Chrome and Firefox pre-installed
+
+variables:
+  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
+  MAVEN_OPTS: -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)
+  # Real projects keep secrets in Pipelines > Library > Variable group, marked as secret.
+  # Uncomment after creating a group named trcm-qa-secrets with
+  # apimSubscriptionKey and serviceApiKey:
+  # - group: trcm-qa-secrets
+
+stages:
+  # ------------------------------------------------------------------ Build
+  - stage: Build
+    displayName: Build
+    jobs:
+      - job: Compile
+        displayName: Compile framework and tests
+        steps:
+          - task: Cache@2
+            displayName: Cache Maven dependencies
+            inputs:
+              key: 'maven | "$(Agent.OS)" | **/pom.xml'
+              restoreKeys: |
+                maven | "$(Agent.OS)"
+              path: $(MAVEN_CACHE_FOLDER)
+
+          - task: Maven@4
+            displayName: mvn clean test-compile
+            inputs:
+              mavenPomFile: pom.xml
+              goals: clean test-compile
+              options: -B $(MAVEN_OPTS)
+              javaHomeOption: JDKVersion
+              jdkVersionOption: '1.17'
+              publishJUnitResults: false
+
+  # ------------------------------------------------------------------- Test
+  - stage: Test
+    displayName: Test (${{ parameters.suite }} on ${{ parameters.environment }})
+    dependsOn: Build
+    jobs:
+      - job: RunTests
+        displayName: Run ${{ parameters.suite }} suite
+        timeoutInMinutes: 60
+        steps:
+          - task: Cache@2
+            displayName: Cache Maven dependencies
+            inputs:
+              key: 'maven | "$(Agent.OS)" | **/pom.xml'
+              restoreKeys: |
+                maven | "$(Agent.OS)"
+              path: $(MAVEN_CACHE_FOLDER)
+
+          - task: Maven@4
+            displayName: mvn test
+            inputs:
+              mavenPomFile: pom.xml
+              goals: clean test
+              options: >-
+                -B $(MAVEN_OPTS)
+                -Denv=${{ parameters.environment }}
+                -Dsuite=src/test/resources/suites/${{ parameters.suite }}.xml
+                -Dbrowser=${{ parameters.browser }}
+                -Dheadless=true
+              javaHomeOption: JDKVersion
+              jdkVersionOption: '1.17'
+              # Publishes results to the "Tests" tab of the run (pass/fail counts, history, flaky detection)
+              publishJUnitResults: true
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+              testRunTitle: TRCM ${{ parameters.suite }} - ${{ parameters.environment }}
+            env:
+              # Secret variables are NOT exposed to scripts automatically; they must be mapped here.
+              # ConfigReader reads APIM_SUBSCRIPTION_KEY / SERVICE_API_KEY from the environment.
+              # If the variables are not defined, Azure passes the literal text "$(name)",
+              # which ConfigReader ignores, so the local fake keys are used instead.
+              APIM_SUBSCRIPTION_KEY: $(apimSubscriptionKey)
+              SERVICE_API_KEY: $(serviceApiKey)
+
+          # Make sure the folders exist so the publish steps never fail on a green run
+          - bash: mkdir -p target/reports target/logs target/screenshots
+            displayName: Prepare artifact folders
+            condition: always()
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Extent report
+            condition: always()   # publish even when tests fail; that is when you need it most
+            inputs:
+              targetPath: target/reports
+              artifact: ExtentReport-$(System.JobAttempt)
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish logs
+            condition: always()
+            inputs:
+              targetPath: target/logs
+              artifact: Logs-$(System.JobAttempt)
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish failure screenshots
+            condition: always()
+            inputs:
+              targetPath: target/screenshots
+              artifact: Screenshots-$(System.JobAttempt)

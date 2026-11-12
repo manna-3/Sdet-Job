@@ -1,0 +1,33 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  REGRESSION suite: every UI + API test. Runs nightly and after each Cert deployment.
+  parallel="classes": each test class runs on its own thread with its own browser
+  (safe because WebDriver is stored in a ThreadLocal). thread-count = max browsers at once.
+  Command: mvn clean test   (this is the default suite in pom.xml)
+-->
+<suite name="TRCM Regression" parallel="classes" thread-count="3" verbose="1">
+    <listeners>
+        <listener class-name="com.trcm.qa.listeners.TestListener"/>
+        <listener class-name="com.trcm.qa.listeners.RetryTransformer"/>
+    </listeners>
+    <test name="Regression">
+        <groups>
+            <run>
+                <include name="regression"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="com.trcm.qa.tests.ui.EnvironmentTest"/>
+            <class name="com.trcm.qa.tests.ui.FileUploadTest"/>
+            <class name="com.trcm.qa.tests.ui.RunReviewTest"/>
+            <class name="com.trcm.qa.tests.ui.ClaimGridTest"/>
+            <class name="com.trcm.qa.tests.ui.ClaimDetailTest"/>
+            <class name="com.trcm.qa.tests.ui.PredictionTest"/>
+            <class name="com.trcm.qa.tests.ui.ExportTest"/>
+            <class name="com.trcm.qa.tests.ui.RevalidateTest"/>
+            <class name="com.trcm.qa.tests.ui.BulkChatTest"/>
+            <class name="com.trcm.qa.tests.ui.ClaimChatTest"/>
+            <class name="com.trcm.qa.tests.api.ApimAuthTest"/>
+        </classes>
+    </test>
+</suite>

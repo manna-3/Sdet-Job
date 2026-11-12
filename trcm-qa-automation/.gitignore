@@ -1,0 +1,19 @@
+# Build output (reports, logs, screenshots, downloads are all under target/)
+target/
+test-output/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Never commit real secrets
+*.env
+secrets.properties
