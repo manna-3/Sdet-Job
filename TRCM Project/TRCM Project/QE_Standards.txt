@@ -1,0 +1,27 @@
+Quality Processes required
+--------------------------
+ 
+1. Every user story should have detailed description (Exact scope of the story) , Acceptance Criteria. - These 2 would define what is needed to be developed and tested for that story.
+2. Effort (Pointing stories) - Required to schedule grooming calls for the story estimates required by dev and QE.
+	Usually points are 1,2,3,5 & 8 for any story that should be completed in a sprint
+	1 point can be chosen if the story needs a very simple change and no QE is required.
+	Usually 2 should be default for a small change usually can be done in 1-2 days
+	1-3 days - It can be 3 points
+	1 - 5 days can be 5 points
+	> 5 days can be 8 points max. (Always prefer to split the stories to fit under 5 points)
+3. Testing - QE should start creating the test steps for the user story while it is in development coordinating with the developer. Identify the functional and regression test cases and document them accordingly.
+4. Once the test cases are ready, these should be shared with dev and Product Owner for review and needs to be approved.
+5. Once approved, document the test cases in DEVO and link them to the story and the RWI.
+6. Once development is done, code is pushed to dev env. Dev should validate the story in dev env and then hand it over to QE for functional testing.
+7. Any bugs identified in functional testing should be notified to dev and dev bug must be created and linked to the story. Note: Dev bugs cannot carry any points.
+8. Once the story and any corresponding dev bugs are tested and approved in Dev, QE must prepare a plan for cert deployment.
+	There are 2 types of Cert deployments (You need RWI for the stories to deploy to Cert)
+		a. Oncycle - Must be planned in advanced and be deployed on Tuesdays only (There is a cert review meeting that happens every Tuesday at 8PM IST where the stories that are planned for oncycle must be presented and will be 		   reviewed and approved by correponding Cert reviewers)
+		b. Offcycle - Can happen on any day if they cannot be presented as oncycle. These deployments would need a email request to be sent to "TPS CERT Approvers (Cognizant)" <TPSCERTApprovers@cognizant.com> for offcycle approval 		   and once approved, the story can be deployed.
+9. Cert deployment is done by the dev's and gatekeepers (Here in this case Imran will be the gatekeeper)
+10. Once Cert deployment is done, dev has to complete validations and hand it over to QE for Regression Testing.
+11. If QE finds any bugs in Cert env during regression, dev bug must be created and the defects needs to be fixed, tested in dev and follow steps 8 - 10.
+12. After all bugs are handled and regression is complete, QE approves the story in Cert. (All the devbugs and stories that are linked to each other should be approved together)
+13. Depends on your team process, you can plan UAT demos to PO's & BA's for UAT approvals
+14. Then the story can be deployed to production. After prod deployment, the verification is done by dev and QE if any issues found, you need to create a Bug to fix it separately.
+15. If there is rollback required, you have to follow the rollback process from Prod, Cert and Dev based on the PO & PM's decision.
